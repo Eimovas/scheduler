@@ -1,0 +1,14 @@
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item" [routerLink]="['practiceSetup']" routerLinkActive="active disabled">Practice Setup</li>
+        <li class="breadcrumb-item" [routerLink]="['surgerySetup']" routerLinkActive="active">Surgery Setup</li>
+        <li class="breadcrumb-item" [routerLink]="['employeeSetup']" routerLinkActive="active">Employee Setup</li>
+        <li class="breadcrumb-item" [routerLink]="['reviewSetup']" routerLinkActive="active">Review</li>
+    </ol>
+</nav>
+
+<div>
+    <button type="button" (click)="save()" class="btn btn-primary">Submit</button>
+</div>
+
+<router-outlet></router-outlet>

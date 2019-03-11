@@ -1,0 +1,23 @@
+<div [formGroup]="timeRange">
+    <div class="row">
+        <div class="col-3">
+            {{label}}
+        </div>
+        <div class="col">
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">From</span>
+                </div>
+                <input type="time" class="form-control" formControlName="from">
+            </div>
+        </div>
+        <div class="col">
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">To</span>
+                </div>
+                <input type="time" class="form-control" formControlName="to">
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,23 @@
+<h2 class="text-center">{{currentMonth}}</h2>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Set defaults</h5>
+        <div [formGroup]="defaults">
+            <div class="defaults-item">
+                <scheduler-timerange [timeRange]="defaults.get('weekdays')" [label]="'Weekdays'"></scheduler-timerange>
+            </div>
+            <div class="defaults-item">
+                <scheduler-timerange [timeRange]="defaults.get('weekends')" [label]="'Weekends'"></scheduler-timerange>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div [formGroup]="parentForm" class="list-group">
+    <div formArrayName="operationTimes" *ngFor="let day of operationTimes.controls"
+        [ngClass]="isWeekend(day) ? 'list-group-item-warning' : ''" class="list-group-item">
+        <scheduler-timerange [timeRange]="day" [label]="formatDay(day)"></scheduler-timerange>
+    </div>
+</div>

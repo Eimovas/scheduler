@@ -1,0 +1,14 @@
+.breadcrumb-item::before {
+    font-family: 'FontAwesome';
+    content: "\f0da";
+}
+
+.breadcrumb-item:first-child::before {
+    font-family: 'FontAwesome';
+    content: "";
+}
+
+.breadcrumb-item:not(.active) {
+    cursor: pointer;
+    color: blue;
+}
