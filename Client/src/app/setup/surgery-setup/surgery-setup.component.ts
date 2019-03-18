@@ -11,6 +11,6 @@ export class SurgerySetupComponent implements OnInit {
   constructor() { }
 
   ngOnInit() {
+      // TODO: finished here. Implement this with surgery names only for now. Assuming all surgeries work full time
   }
-
 }
