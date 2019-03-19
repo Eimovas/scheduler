@@ -1,8 +1,4 @@
-﻿open Scheduler.Core.Domain
-
-open Scheduler.Core.Domain
-
-namespace Scheduler.Core.Domain.Implementation2
+﻿namespace Scheduler.Core.Domain.Implementation2
 
 open Scheduler.Core.Helpers
 open System
@@ -20,15 +16,15 @@ type Surgery = {
 }
 
 type Position = 
-| Doctor
+| Dentist
 | Nurse
 
 type UnvalidatedEmployee = {
     Name : string
     Position : Position
-    WorkTimes : TimeRange list // time off range cannot be larger than work time range for the same day
+    WorkHours : TimeRange list // time off range cannot be larger than work time range for the same day
     TimeOff: TimeRange list
-    HourLimitPerWeek : decimal
+    //HourLimitPerWeek : decimal
 }
 
 type ValidatedEmployee = {
@@ -40,7 +36,7 @@ type ValidatedEmployee = {
 
 type EmployeeWorkSlot = {
     Name : string
-    //Position : Position
+    Position : Position
     TimeSlot : TimeRange
 }
 
@@ -116,6 +112,36 @@ module Implementation2 =
     let prepSurgeries (surgeries : Surgery list) : SurgeryWorkSlot list = 
         surgeries
         |> List.collect (fun s -> s.WorkTimes |> List.map (fun w -> { Name = s.Name; TimeSlot = w }))
+
+
+
+    //let employees : ValidatedEmployee list = [
+    //    {   Name = "Algis"
+    //        Position = Nurse
+    //        WorkTimes = [
+    //            { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
+    //            { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+    //            { From = DateTime(2018, 1, 3, 8, 0, 0); To = DateTime(2018, 1, 3, 17, 0, 0)}
+    //        ]
+    //        TimeOff = [
+    //            { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+    //        ]   
+    //    }
+    //    {   Name = "Jonas"
+    //        Position = Dentist
+    //        WorkTimes = [
+    //            { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
+    //            { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+    //            { From = DateTime(2018, 1, 4, 8, 0, 0); To = DateTime(2018, 1, 4, 17, 0, 0) }
+    //        ]
+    //        TimeOff = [
+    //            { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+    //        ]   
+    //    }
+    //]
+
+    //let result = prepEmployees (buildEmployeeWorkTimes getTimeRangeRemainder calculateTimeRangeListDiff) employees
+
 
     type InterimState = {
         TimedSlots : TimedWorkSlot list

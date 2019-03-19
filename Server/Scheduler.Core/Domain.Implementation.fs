@@ -27,7 +27,7 @@ module private Implementation =
 
     let pairEmployeesWithTimes list : PairedTime<Employee> list= 
         list 
-        |> List.map (fun current -> current.WorkTimes |> List.map(fun w -> PairedTime.create current w))
+        |> List.map (fun current -> current.WorkHours |> List.map(fun w -> PairedTime.create current w))
         |> List.flatten
 
     let pairSurgeriesWithTimes (list : Surgery list) : PairedTime<Surgery> list= 
@@ -90,8 +90,8 @@ module private Implementation =
 module Operations = 
     let calculateDistribution : CalculateDistribution = 
         fun employees surgeries -> 
-            let nurses = employees |> List.filter (fun e -> e.Specialization = Nurse)
-            let doctors = employees |> List.filter (fun e -> e.Specialization <> Nurse)
+            let nurses = employees |> List.filter (fun e -> e.Position = Nurse)
+            let doctors = employees |> List.filter (fun e -> e.Position <> Nurse)
 
             let doctorsTimeMap = doctors |> Implementation.pairEmployeesWithTimes
             let nursesTimeMap = nurses |> Implementation.pairEmployeesWithTimes

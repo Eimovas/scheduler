@@ -32,8 +32,8 @@ type Position =
 
 type Employee = {
     Name : string
-    Specialization : Position
-    WorkTimes : TimeRange list
+    Position : Position
+    WorkHours : TimeRange list
     HourLimitPerWeek : decimal
     RequestedOvertime : TimeRange list // TODO: have a separate type, only relevant for nurses
 }

@@ -69,7 +69,7 @@ module Helpers =
             let time = sprintf "%s - %s" (s.TimeSlot.From.ToString()) (s.TimeSlot.To.ToString()) 
             let employees = s.Employees |> List.map (fun e -> 
                 match e with
-                | Some em -> sprintf "%s (%s)" em.Pair.Name (em.Pair.Specialization.ToString())
+                | Some em -> sprintf "%s (%s)" em.Pair.Name (em.Pair.Position.ToString())
                 | None -> "NA"
             )
             printf "\n%s: \n \t %s \n \t %s" surgeryName time (String.Join(", ", employees)
@@ -108,8 +108,8 @@ module SetupInput =
             EmployeeSetup = [
                 {
                     Name = "Algis"
-                    Specialization = Position.Nurse
-                    WorkTimes = [
+                    Position = Position.Nurse
+                    WorkHours = [
                         { From = new DateTime(2018, 1, 1, 8, 0, 0); To = new DateTime(2018, 1, 1, 17, 0, 0) }
                     ]
                     HourLimitPerWeek = 0M
@@ -117,8 +117,8 @@ module SetupInput =
                 }
                 {
                     Name = "Juozas"
-                    Specialization = Position.Nurse
-                    WorkTimes = [
+                    Position = Position.Nurse
+                    WorkHours = [
                         { From = new DateTime(2018, 1, 1, 8, 0, 0); To = new DateTime(2018, 1, 1, 11, 0, 0) }
                     ]
                     HourLimitPerWeek = 0M
@@ -126,8 +126,8 @@ module SetupInput =
                 }
                 {
                     Name = "Zigmas"
-                    Specialization = Position.Dentist
-                    WorkTimes = [
+                    Position = Position.Dentist
+                    WorkHours = [
                         { From = new DateTime(2018, 1, 1, 8, 0, 0); To = new DateTime(2018, 1, 1, 17, 0, 0) }
                     ]
                     HourLimitPerWeek = 0M

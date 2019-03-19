@@ -7,21 +7,137 @@ type TimeRange = {
     To : DateTime
 }
 
+type Position = 
+| Nurse
+| Dentist
+
 type EmployeeWorkSlot = {
     Name : string
-    //Position : Position
+    Position : Position
     TimeSlot : TimeRange
 }
+type SurgeryWorkSlot = {
+    Name : string
+    TimeSlot : TimeRange
+}
+
+type Employee = {
+    Name : string
+    WorkHours : TimeRange list
+    TimeOff : TimeRange list
+    Position : Position
+}
+
+type Surgery = {
+    Name : string
+    WorkHours : TimeRange list
+}
+
+type Setup = {
+    Employees : Employee list
+    Surgeries : Surgery list
+}
+
+type SurgeryStaffAssignment = {
+    Surgery : SurgeryWorkSlot
+    Staff : EmployeeWorkSlot list
+}
+
 type MatchType = 
 | Full
 | PartialMore
 | PartialLess
 
+
+type SurgeryStaffAssignmentDTO = {
+    Surgery : SurgeryWorkSlotDTO
+    Staff : EmployeeWorkSlotDTO[]
+}
+and SurgeryWorkSlotDTO = {
+    Name : string
+    TimeSlot : TimeRange
+}
+and EmployeeWorkSlotDTO = {
+    Name : string
+    TimeSlot : TimeRange
+    Position : string
+}
+
+type SetupDTO = {
+    Surgeries : SurgeryDTO[]
+    Employees : EmployeeDTO[]
+}
+and SurgeryDTO = {
+    Name : string
+    WorkHours : TimeRange[]
+}
+and EmployeeDTO = {
+    Name : string
+    WorkHours : TimeRange[]
+    TimeOff : TimeRange[]
+    Position : string
+}
+
 type MatchForType = EmployeeWorkSlot -> TimeRange -> MatchType -> (EmployeeWorkSlot * EmployeeWorkSlot * EmployeeWorkSlot list) option 
 type FindNextBest = MatchForType -> MatchType -> TimeRange -> EmployeeWorkSlot list -> (EmployeeWorkSlot list * EmployeeWorkSlot list)
+type GetIntervalDiff = TimeRange -> TimeRange list -> TimeRange list
+type FillSurgeries = FindNextBest -> MatchForType -> GetIntervalDiff -> SurgeryWorkSlot list -> EmployeeWorkSlot list -> EmployeeWorkSlot list -> SurgeryStaffAssignment list
+
+module TimeRange = 
+    let getRemainder : GetIntervalDiff = 
+        fun a b -> 
+            let getHourListBetween (a : DateTime) (b : DateTime) = 
+                seq { for i in a.Hour .. b.Hour -> i } |> Seq.toList
+
+            let busyHours = 
+                b
+                |> List.map (fun item -> getHourListBetween item.From item.To)
+                |> List.concat
+
+            let availableHours = 
+                getHourListBetween a.From a.To 
+                |> List.except(busyHours)
+                |> List.map(fun i -> [i+1; i; i-1])
+                |> List.concat
+                |> List.filter (fun i -> (i >= a.From.Hour) && (i <= a.To.Hour))
+                |> List.distinct
+                |> List.sort
+
+            let buildResult (initDate : DateTime) (sortedHours:int list): TimeRange list = 
+                let rec buildResult' hours aggr = 
+                    match hours with
+                    | [] -> aggr
+                    | head::[] -> 
+                        let (currentLatestDate:DateTime, previousHour, resultList) = aggr
+                        let newTo = currentLatestDate.AddHours(float(head - currentLatestDate.Hour))
+                        let result = { From = currentLatestDate; To = newTo } :: resultList
+                        (newTo, head, result)
+                    | head::tail -> 
+                        let (currentLatestDate:DateTime, previousHour, resultList) = aggr
+                        match head - previousHour with
+                        | 1 -> buildResult' tail (currentLatestDate, head, resultList)
+                        | diff -> 
+                            let newTo = currentLatestDate.AddHours(float(previousHour - currentLatestDate.Hour))
+                            let result = { From = currentLatestDate; To = newTo } :: resultList
+                            buildResult' tail (newTo.AddHours(float(diff)), head, result)
+
+                let head = sortedHours |> List.head
+                let tail = sortedHours |> List.tail
+                let startDate head (initDate : DateTime) = 
+                    if head = initDate.Hour then
+                        initDate
+                    else
+                        initDate.AddHours(float(head - initDate.Hour))
+
+                let (_, _, result) = buildResult' tail (startDate head initDate, head, [])
+                result
+        
+            match availableHours with
+            | [] -> []
+            | _ -> buildResult a.From availableHours
 
 module Implementation3 = 
-    let findNextBest : FindNextBest = 
+    let private findNextBest : FindNextBest = 
         fun matchForType matchType timeRange employeeList -> 
 
             let rec findNextBest' employees timeRange matchType =           
@@ -44,13 +160,13 @@ module Implementation3 =
 
             result, newEmployeeList
 
-    let matchForType : MatchForType = 
+    let private matchForType : MatchForType = 
         fun employee timeRange matchType -> 
             match matchType with
             | Full -> 
                 match employee.TimeSlot.From - timeRange.From, employee.TimeSlot.To - timeRange.To with
                 | (x,y) when x = TimeSpan.Zero && y = TimeSpan.Zero -> 
-                    Some(employee, employee, []) // result * what to remove * what to add
+                    Some(employee, employee, []) 
                 | _ -> None
             | PartialMore -> 
                 match employee.TimeSlot.From - timeRange.From, employee.TimeSlot.To - timeRange.To with
@@ -77,20 +193,144 @@ module Implementation3 =
                     Some(employee, employee, [])
                 | _ -> None
 
-    let surgeryTimeRange = { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
-    let employees : EmployeeWorkSlot list= [
-        //{ Name = "Algis"; TimeSlot = { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }}
-        { Name = "Algis1"; TimeSlot = { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 12, 0, 0) }}
-        { Name = "Algis2"; TimeSlot = { From = DateTime(2018, 1, 1, 12, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }}
-        { Name = "Algis3"; TimeSlot = { From = DateTime(2018, 1, 1, 7, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }}
+    let private fillSurgeriesInternal : FillSurgeries =
+        fun findNextBest matchForType getRemainder surgeries doctors nurses ->
+            let rec fillSurgeries matchType surgeries aggr = 
+                // TODO: for partial less, add recursive approach - probably extract to a new function
+                let (employees, result) = aggr
+                match surgeries with
+                | [] -> aggr
+                | surgery::tail -> 
+                    let (employeesForDay, employees) = findNextBest matchForType matchType surgery.TimeSlot employees
+                    fillSurgeries matchType tail (employees, (surgery, employeesForDay)::result)
+
+            let getRemainingSurgeryTimes getRemainder (surgeryWithEmployees : (SurgeryWorkSlot*EmployeeWorkSlot list) list) : SurgeryWorkSlot list = 
+                surgeryWithEmployees
+                |> List.map (fun (s, e) -> 
+                    let employeeTimes = e |> List.map (fun e -> e.TimeSlot)
+                    getRemainder s.TimeSlot employeeTimes |> List.map(fun r -> { s with TimeSlot = r })
+                )
+                |> List.concat
+
+            // full matching
+            let (doctors, doctorResult1) = fillSurgeries Full surgeries (doctors, [])
+            let (nurses, nurseResult1) = fillSurgeries Full surgeries (nurses, [])
+
+            let remainingTimesForDoctors1 = getRemainingSurgeryTimes getRemainder doctorResult1
+            let remainingTimesForNurses1 = getRemainingSurgeryTimes getRemainder nurseResult1
+
+            // partial more matching
+            let (doctors, doctorResult2) = fillSurgeries PartialMore remainingTimesForDoctors1 (doctors, [])
+            let (nurses, nurseResult2) = fillSurgeries PartialMore remainingTimesForNurses1 (nurses, [])
+
+            let remainingTimesForDoctors2 = getRemainingSurgeryTimes getRemainder doctorResult2
+            let remainingTimesForNurses2 = getRemainingSurgeryTimes getRemainder nurseResult2
+
+            // partial less matching
+            let (_, doctorResult3) = fillSurgeries PartialLess remainingTimesForDoctors2 (doctors, [])
+            let (_, nurseResult3) = fillSurgeries PartialLess remainingTimesForNurses2 (nurses, [])
+
+            let finalAll = 
+                doctorResult1 @ doctorResult2 @ doctorResult3 @ nurseResult1 @ nurseResult2 @ nurseResult3
+                |> List.groupBy (fun (surgery, _) -> surgery)
+                |> List.map (fun e -> 
+                    let (surgery, surgeryEmployees) = e
+                    let employees = surgeryEmployees |> List.map (fun (_,e) -> e) |> List.concat
+                    { Surgery = surgery; Staff = employees }
+                )
+            finalAll
+
+    let fillSurgeries = fillSurgeriesInternal findNextBest matchForType TimeRange.getRemainder
+
+module internal Setup3 =
+    let private prepEmployeeInternal getRemainder (employee: Employee) : EmployeeWorkSlot list = 
+       employee.WorkHours
+       |> List.map(fun wh -> 
+           let timeOffsForDay = employee.TimeOff |> List.filter (fun tmOff -> wh.From.Date = tmOff.From.Date)
+           (wh, timeOffsForDay)
+       )
+       |> List.map (fun (workTime, timeOffs) -> getRemainder workTime timeOffs)
+       |> List.concat
+       |> List.map (fun tr -> { Name = employee.Name; Position = employee.Position; TimeSlot = tr })
+
+    let private prepEmployee = prepEmployeeInternal TimeRange.getRemainder 
+
+    let private prepEmployeesInternal prepEmployee (employees : Employee list) : EmployeeWorkSlot list = 
+        employees
+        |> List.map(fun employee -> prepEmployee employee)
+        |> List.concat
+
+    let prepEmployees = prepEmployeesInternal prepEmployee
+
+    let prepSurgeries (surgeries : Surgery list) : SurgeryWorkSlot list = 
+        surgeries 
+        |> List.collect (fun s -> s.WorkHours |> List.map (fun w -> { Name = s.Name; TimeSlot = w }))
+
+module Mappings3 = 
+    let surgeryWorkSlotToDTO (surgery : SurgeryWorkSlot) : SurgeryWorkSlotDTO = 
+        { Name = surgery.Name ; TimeSlot = surgery.TimeSlot }
+    
+    let employeeWorkSlotToDTO (employee : EmployeeWorkSlot) : EmployeeWorkSlotDTO = 
+        { Name = employee.Name; Position = employee.Position.ToString(); TimeSlot = employee.TimeSlot}
+
+    let private staffAssignmentToDTOInternal surgeryToDTO employeeToDTO (assignment : SurgeryStaffAssignment) : SurgeryStaffAssignmentDTO = 
+        { 
+            Surgery = surgeryToDTO assignment.Surgery
+            Staff = assignment.Staff |> List.map (fun s -> employeeToDTO s) |> List.toArray
+        }
+    
+    let staffAssignmentToDTO = staffAssignmentToDTOInternal surgeryWorkSlotToDTO employeeWorkSlotToDTO
+
+    // TODO: finished here. Do the setup DTO mappings and validation, commit everything and refactor everything.
+
+    
+module Test = 
+    let surgeries : Surgery list = [
+        { Name = "Surgery 1"; WorkHours = [
+            { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
+            { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+        ]} 
+        { Name = "Surgery 2"; WorkHours = [
+            { From = DateTime(2018, 1, 3, 8, 0, 0); To = DateTime(2018, 1, 3, 17, 0, 0) }
+            { From = DateTime(2018, 1, 4, 8, 0, 0); To = DateTime(2018, 1, 4, 17, 0, 0) }
+        ]}
     ]
 
+    let employees : Employee list = [
+        {   Name = "Algis"
+            Position = Nurse
+            WorkHours = [
+                { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
+                { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+                { From = DateTime(2018, 1, 3, 8, 0, 0); To = DateTime(2018, 1, 3, 17, 0, 0)}
+            ]
+            TimeOff = [
+                { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+            ]   
+        }
+        {   Name = "Jonas"
+            Position = Dentist
+            WorkHours = [
+                { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
+                { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+                { From = DateTime(2018, 1, 4, 8, 0, 0); To = DateTime(2018, 1, 4, 17, 0, 0) }
+            ]
+            TimeOff = [
+                { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+            ]   
+        }
+    ]
 
-    let result = findNextBest matchForType Full surgeryTimeRange employees 
+    let prepedSurgeries = Setup3.prepSurgeries surgeries
+    let prepedNurses = Setup3.prepEmployees (employees |> List.filter (fun e -> e.Position = Nurse))
+    let preppedDoctors = Setup3.prepEmployees (employees |> List.filter (fun e -> e.Position = Dentist))
+    let result = Implementation3.fillSurgeries prepedSurgeries preppedDoctors prepedNurses
+    let resultDTO = result |> List.map (fun r -> Mappings3.staffAssignmentToDTO r)
 
-    // this seems to work now - gives a best matching employee for the surgery time slot and gives back the updated employee list
-    // need to ->
-    // iterate surgeries
-    // on first iteration, match full, second - match partialMore, and after ->
-    // match partialLess and recurse until returns anything
-    // 
+    let printReport (report : SurgeryStaffAssignment list) = 
+        for staffAssignment in report do
+            printfn "Surgery : %s (%s - %s)" staffAssignment.Surgery.Name (staffAssignment.Surgery.TimeSlot.From.ToString()) (staffAssignment.Surgery.TimeSlot.To.ToString())
+            for employee in staffAssignment.Staff do
+                printfn "\t Employee: %s(%A), Times: %s - %s" employee.Name employee.Position (employee.TimeSlot.From.ToString()) (employee.TimeSlot.To.ToString())
+
+    printReport result

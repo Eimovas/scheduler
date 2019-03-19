@@ -36,11 +36,11 @@ module Mappers =
     let private mapEmployeeToDomain (employee : EmployeeDTO) : Employee = 
         {
             Name = employee.Name
-            Specialization = 
+            Position = 
                 match employee.Specialization with
                 | 1 -> Nurse
                 | _ -> Dentist
-            WorkTimes = employee.WorkTimes
+            WorkHours = employee.WorkTimes
             HourLimitPerWeek = employee.HourLimitPerWeek
             RequestedOvertime = employee.RequestedOvertime
         }
@@ -61,10 +61,10 @@ module Mappers =
         {
             Name = employee.Name
             Specialization = 
-                match employee.Specialization with
+                match employee.Position with
                 | Nurse -> 1
                 | _ -> 2
-            WorkTimes = employee.WorkTimes
+            WorkTimes = employee.WorkHours
             HourLimitPerWeek = employee.HourLimitPerWeek
             RequestedOvertime = employee.RequestedOvertime
         }
