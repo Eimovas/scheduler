@@ -1,69 +1,48 @@
-﻿namespace Scheduler.Core.Domain
+﻿namespace Scheduler.Core.Domain.Models
 
-open System
-
-type NonEmptyString = NonEmptyString of string
-type PositiveInt = PositiveInt of int
-
-type TimeRange = {
-    From : DateTime
-    To : DateTime
-}
-type PairedTime<'a> = {
-    Pair : 'a
-    TimeRange : TimeRange
-}
-module PairedTime = 
-    let create p t = { Pair = p; TimeRange = t }
-
-
-
-type Surgery = {
-    Name : string
-    WorkTimes : TimeRange list
-}
+open Scheduler.Core.SimpleTypes
 
 type Position = 
 | Nurse
 | Dentist
-| Hygienist
-| OrthodontistTherapeut
-| Specialist
+
+type EmployeeWorkSlot = {
+    Name : string
+    Position : Position
+    TimeSlot : TimeRange
+}
+type SurgeryWorkSlot = {
+    Name : string
+    TimeSlot : TimeRange
+}
 
 type Employee = {
     Name : string
-    Position : Position
     WorkHours : TimeRange list
-    HourLimitPerWeek : decimal
-    RequestedOvertime : TimeRange list // TODO: have a separate type, only relevant for nurses
+    TimeOff : TimeRange list
+    Position : Position
+}
+
+type Surgery = {
+    Name : string
+    WorkHours : TimeRange list
 }
 
 type Setup = {
-    OperationTimes : TimeRange list
-    EmployeeSetup : Employee list
-    SurgerySetup : Surgery list
+    Employees : Employee list
+    Surgeries : Surgery list
 }
 
-type SurgerySchedule = {
-    Surgery : Surgery
-    TimeSlot : TimeRange
-    Employees : PairedTime<Employee> option list
+type SurgeryStaffAssignment = {
+    Surgery : SurgeryWorkSlot
+    Staff : EmployeeWorkSlot list
 }
 
-type EmployeeSchedule = {
-    Employee : Employee
-    WorkingTimes : TimeRange list
-}
+type MatchType = 
+| Full
+| PartialMore
+| PartialLess
 
-type Distribution = {
-    Schedules: SurgerySchedule list
-    TimeRange : TimeRange
-}
-
-
-
-
-type CalculateTimeFrame = TimeRange list -> TimeRange
-type CalculateDistribution = Employee list -> Surgery list -> SurgerySchedule list
-
-type DistributionWorkflow = Setup -> CalculateDistribution -> CalculateTimeFrame -> Distribution
+type MatchForType = EmployeeWorkSlot -> TimeRange -> MatchType -> (EmployeeWorkSlot * EmployeeWorkSlot * EmployeeWorkSlot list) option 
+type FindNextBest = MatchForType -> MatchType -> TimeRange -> EmployeeWorkSlot list -> (EmployeeWorkSlot list * EmployeeWorkSlot list)
+type FillSurgeries = FindNextBest -> MatchForType -> GetIntervalDiff -> SurgeryWorkSlot list -> EmployeeWorkSlot list -> EmployeeWorkSlot list -> SurgeryStaffAssignment list

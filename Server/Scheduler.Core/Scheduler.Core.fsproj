@@ -5,14 +5,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Include="Readme.MD" />
+    <Compile Include="Infrastructure.fs" />
     <Compile Include="SimpleTypes.fs" />
     <Compile Include="Domain.Models.fs" />
     <Compile Include="Domain.DTO.fs" />
-    <Compile Include="Helpers.fs" />
     <Compile Include="Domain.Implementation.fs" />
-    <Compile Include="Domain.Implementation2.fs" />
-    <Compile Include="Domain.Implementation3.fs" />
+    <Compile Include="Mappings.fs" />
     <Compile Include="API.fs" />
     <None Include="Scratchpad.fsx" />
   </ItemGroup>

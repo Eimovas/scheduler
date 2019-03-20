@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.DependencyInjection;
+using Scheduler.Core.API;
 
 namespace Scheduler.API
 {
@@ -10,6 +11,7 @@ namespace Scheduler.API
         // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddSingleton<IScheduleCalculator, ScheduleCalculator>();
             services.AddMvc();
         }
 

@@ -1,138 +1,136 @@
-﻿namespace Scheduler.Core.Domain
+﻿namespace Scheduler.Core.Domain.Implementation
 
-open Scheduler.Core.Helpers
 open System
+open Scheduler.Core.Domain.Models
+open Scheduler.Core.SimpleTypes
 
-module private Implementation =
-    type MatchType = 
-    | Empty
-    | Partial of PairedTime<Employee>
-    | Full of PairedTime<Employee>
+module Processing = 
+    let private findNextBest : FindNextBest = 
+        fun matchForType matchType timeRange employeeList -> 
 
-    let tryFindForTimeSlot timeSlot (list : PairedTime<Employee> list) : MatchType = 
-        let itemOption = list |> List.tryFind(fun r -> r.TimeRange.From = timeSlot.From && r.TimeRange.To = timeSlot.To)
-        match itemOption with
-        | Some x -> Full x
-        | None -> 
-            let partial = list |> List.tryFind (fun r -> 
-                let time = r.TimeRange
-                (time.From >= timeSlot.From && time.To <= timeSlot.To) ||
-                (time.From >= timeSlot.From && time.To >= timeSlot.To) ||
-                (time.From <= timeSlot.From && time.To <= timeSlot.To) ||
-                (time.From <= timeSlot.From && time.To >= timeSlot.To)
-            )
-            match partial with
-            | Some x -> Partial x
-            | None -> Empty        
+            let rec findNextBest' employees timeRange matchType =           
+                match employees with
+                | [] -> None
+                | head::tail ->
+                    let singleMatch = matchForType head timeRange matchType
+                    match singleMatch with
+                    | None -> findNextBest' tail timeRange matchType
+                    | Some (x,y,z) -> Some (x,y,z)
+        
+            let resultOption = findNextBest' employeeList timeRange matchType
+            let (result, newEmployeeList) = 
+                match resultOption with
+                | None -> [], employeeList
+                | Some (x,y,z) -> 
+                    let updatedList = employeeList |> List.filter (fun row -> row <> y)
+                    let updatedList = updatedList @ z
+                    [x],updatedList
 
-    let pairEmployeesWithTimes list : PairedTime<Employee> list= 
-        list 
-        |> List.map (fun current -> current.WorkHours |> List.map(fun w -> PairedTime.create current w))
-        |> List.flatten
+            result, newEmployeeList
 
-    let pairSurgeriesWithTimes (list : Surgery list) : PairedTime<Surgery> list= 
-        list 
-        |> List.map (fun current -> current.WorkTimes |> List.map(fun w -> PairedTime.create current w))
-        |> List.flatten
-
-    let buildEmployeeFromMatch employeeMatch currentTimeSlot : PairedTime<Employee> option=
-        let zero = TimeSpan.Zero
-        match employeeMatch with 
-        | Empty -> None
-        | Full e -> Some e
-        | Partial pairedEmployee  -> 
-            let result = 
-                match currentTimeSlot.From - pairedEmployee.TimeRange.From, currentTimeSlot.To - pairedEmployee.TimeRange.To with
-                | f,t when f = zero && t < zero -> Some currentTimeSlot
-                | f,t when f > zero && t < zero -> Some currentTimeSlot
-                | f,t when f > zero && t = zero -> Some currentTimeSlot
-
-                | f,t when f < zero && t = zero -> Some pairedEmployee.TimeRange
-                | f,t when f = zero && t > zero -> Some pairedEmployee.TimeRange
-                | f,t when f < zero && t > zero -> Some pairedEmployee.TimeRange
+    let private matchForType : MatchForType = 
+        fun employee timeRange matchType -> 
+            match matchType with
+            | Full -> 
+                match employee.TimeSlot.From - timeRange.From, employee.TimeSlot.To - timeRange.To with
+                | (x,y) when x = TimeSpan.Zero && y = TimeSpan.Zero -> 
+                    Some(employee, employee, []) 
+                | _ -> None
+            | PartialMore -> 
+                match employee.TimeSlot.From - timeRange.From, employee.TimeSlot.To - timeRange.To with
+                | (x,y) when x < TimeSpan.Zero && y = TimeSpan.Zero -> 
+                    let remainder = { From = employee.TimeSlot.From; To = timeRange.From }
+                    Some({ employee with TimeSlot = timeRange }, employee, [{ employee with TimeSlot = remainder }])
+                | (x,y) when x = TimeSpan.Zero && y > TimeSpan.Zero -> 
+                    let remainder = { From = timeRange.To; To = employee.TimeSlot.To }
+                    Some({ employee with TimeSlot = timeRange }, employee, [{ employee with TimeSlot = remainder }])
+                | (x,y) when x < TimeSpan.Zero && y > TimeSpan.Zero -> 
+                    let remainder1 = { From = employee.TimeSlot.From; To = timeRange.From }
+                    let remainder2 = { From = timeRange.To; To = employee.TimeSlot.To }
+                    Some({ employee with TimeSlot = timeRange }, employee, [{ employee with TimeSlot = remainder1}; { employee with TimeSlot = remainder2 }])
+                | _ -> None
+            | PartialLess -> 
+                match employee.TimeSlot.From - timeRange.From, employee.TimeSlot.To - timeRange.To with
+                | (x,y) when x > TimeSpan.Zero && y = TimeSpan.Zero -> 
+                    let actual = { From = employee.TimeSlot.From ; To = timeRange.To }
+                    Some({ employee with TimeSlot = actual }, employee, [])
+                | (x,y) when x = TimeSpan.Zero && y < TimeSpan.Zero -> 
+                    let actual = { From = timeRange.From ; To = employee.TimeSlot.To }
+                    Some({ employee with TimeSlot = actual }, employee, [])
+                | (x,y) when x > TimeSpan.Zero && y < TimeSpan.Zero -> 
+                    Some(employee, employee, [])
                 | _ -> None
 
-            match result with
-            | Some r -> Some (PairedTime.create pairedEmployee.Pair r)
-            | None -> None
+    let private fillSurgeriesInternal : FillSurgeries =
+        fun findNextBest matchForType getRemainder surgeries doctors nurses ->
+            let rec fillSurgeries matchType surgeries aggr = 
+                // TODO: for partial less, add recursive approach - probably extract to a new function
+                let (employees, result) = aggr
+                match surgeries with
+                | [] -> aggr
+                | surgery::tail -> 
+                    let (employeesForDay, employees) = findNextBest matchForType matchType surgery.TimeSlot employees
+                    fillSurgeries matchType tail (employees, (surgery, employeesForDay)::result)
 
-    let buildUpdatedEmployeeList employeeMatch currentTimeSlot list : PairedTime<Employee> list = 
-        match employeeMatch with
-        | Full e -> list |> List.filter (fun x -> x <> e)
-        | Empty -> list
-        | Partial pairedEmployee -> 
-            let updated = 
-                let zero = TimeSpan.Zero
-                match currentTimeSlot.From - pairedEmployee.TimeRange.From, currentTimeSlot.To - pairedEmployee.TimeRange.To with
-                | f,t when f = zero && t < zero -> 
-                    let newEmployeeFromTime = pairedEmployee.TimeRange.From.Add(currentTimeSlot.To - currentTimeSlot.From)
-                    let remainingEmployeeTime = {From = newEmployeeFromTime; To = pairedEmployee.TimeRange.To}
-                    Some (PairedTime.create pairedEmployee.Pair remainingEmployeeTime)
-                | f,t when f > zero && t < zero -> 
-                    let newEmployeeToTime = pairedEmployee.TimeRange.From.Add(-(currentTimeSlot.To - currentTimeSlot.From))
-                    let newEmployeeFromTime = pairedEmployee.TimeRange.From.Add(currentTimeSlot.To - currentTimeSlot.From)
-                    let remainingEmployeeTime = {From = newEmployeeFromTime; To = newEmployeeToTime}    
-                    Some (PairedTime.create pairedEmployee.Pair remainingEmployeeTime)
-                | f,t when f > zero && t = zero -> 
-                    let newEmployeeToTime = pairedEmployee.TimeRange.From.Add(-(currentTimeSlot.To - currentTimeSlot.From))
-                    let remainingEmployeeTime = {From = pairedEmployee.TimeRange.From; To = newEmployeeToTime}    
-                    Some (PairedTime.create pairedEmployee.Pair remainingEmployeeTime)
-                | f,t when f < zero && t = zero -> None
-                | f,t when f = zero && t > zero -> None
-                | f,t when f < zero && t > zero -> None
-
-            let filteredList = list |> List.filter (fun x -> x <> pairedEmployee)
-
-            match updated with
-            | Some u -> u::filteredList
-            | None -> filteredList
-
-module Operations = 
-    let calculateDistribution : CalculateDistribution = 
-        fun employees surgeries -> 
-            let nurses = employees |> List.filter (fun e -> e.Position = Nurse)
-            let doctors = employees |> List.filter (fun e -> e.Position <> Nurse)
-
-            let doctorsTimeMap = doctors |> Implementation.pairEmployeesWithTimes
-            let nursesTimeMap = nurses |> Implementation.pairEmployeesWithTimes
-            let surgeryTimeMap = surgeries |> Implementation.pairSurgeriesWithTimes
-
-            let (pairedSlots, _, _) = 
-                surgeryTimeMap
-                |> List.fold (fun aggr currentSurgery -> 
-                    let (currentState, docsInternal, nursesInternal) = aggr
-                    let currentTimeSlot = currentSurgery.TimeRange 
-
-                    let doctorMatch = Implementation.tryFindForTimeSlot currentTimeSlot docsInternal
-                    let nurseMatch = Implementation.tryFindForTimeSlot currentTimeSlot nursesInternal
-
-                    let doctor = Implementation.buildEmployeeFromMatch doctorMatch currentTimeSlot
-                    let nurse = Implementation.buildEmployeeFromMatch nurseMatch currentTimeSlot
-                    
-                    let doctorNewList = Implementation.buildUpdatedEmployeeList doctorMatch currentTimeSlot docsInternal
-                    let nurseNewList = Implementation.buildUpdatedEmployeeList nurseMatch currentTimeSlot nursesInternal
-
-                    (List.append currentState [(currentSurgery, doctor, nurse)], doctorNewList, nurseNewList)
-                ) ([], doctorsTimeMap, nursesTimeMap)
-
-            let schedules : SurgerySchedule list = 
-                pairedSlots
-                |> List.map (fun row -> 
-                    let (surgeryInfo, doctorInfo, nurseInfo) = row
-                    { Surgery = surgeryInfo.Pair; TimeSlot = surgeryInfo.TimeRange; Employees = [doctorInfo; nurseInfo]}
+            let getRemainingSurgeryTimes getRemainder (surgeryWithEmployees : (SurgeryWorkSlot*EmployeeWorkSlot list) list) : SurgeryWorkSlot list = 
+                surgeryWithEmployees
+                |> List.map (fun (s, e) -> 
+                    let employeeTimes = e |> List.map (fun e -> e.TimeSlot)
+                    getRemainder s.TimeSlot employeeTimes |> List.map(fun r -> { s with TimeSlot = r })
                 )
+                |> List.concat
 
-            schedules
+            // full matching
+            let (doctors, doctorResult1) = fillSurgeries Full surgeries (doctors, [])
+            let (nurses, nurseResult1) = fillSurgeries Full surgeries (nurses, [])
 
-    let calculateTimeFrame : CalculateTimeFrame = 
-        fun operationTimes -> 
-            let first = (operationTimes |> List.minBy (fun m -> m.From.Ticks)).From
-            let last = (operationTimes |> List.maxBy (fun m -> m.To.Ticks)).To
-            { From = first; To = last }
-    
-    let distributionWorkflow : DistributionWorkflow = 
-        fun setup calculateDistribution calculateTimeframe -> 
-            let timeFrame = setup.OperationTimes |> calculateTimeframe
-            let schedule = calculateDistribution setup.EmployeeSetup setup.SurgerySetup
-            { TimeRange = timeFrame; Schedules = schedule }
+            let remainingTimesForDoctors1 = getRemainingSurgeryTimes getRemainder doctorResult1
+            let remainingTimesForNurses1 = getRemainingSurgeryTimes getRemainder nurseResult1
+
+            // partial more matching
+            let (doctors, doctorResult2) = fillSurgeries PartialMore remainingTimesForDoctors1 (doctors, [])
+            let (nurses, nurseResult2) = fillSurgeries PartialMore remainingTimesForNurses1 (nurses, [])
+
+            let remainingTimesForDoctors2 = getRemainingSurgeryTimes getRemainder doctorResult2
+            let remainingTimesForNurses2 = getRemainingSurgeryTimes getRemainder nurseResult2
+
+            // partial less matching
+            let (_, doctorResult3) = fillSurgeries PartialLess remainingTimesForDoctors2 (doctors, [])
+            let (_, nurseResult3) = fillSurgeries PartialLess remainingTimesForNurses2 (nurses, [])
+
+            let finalAll = 
+                doctorResult1 @ doctorResult2 @ doctorResult3 @ nurseResult1 @ nurseResult2 @ nurseResult3
+                |> List.groupBy (fun (surgery, _) -> surgery)
+                |> List.map (fun e -> 
+                    let (surgery, surgeryEmployees) = e
+                    let employees = surgeryEmployees |> List.map (fun (_,e) -> e) |> List.concat
+                    { Surgery = surgery; Staff = employees }
+                )
+            finalAll
+
+    let fillSurgeries = fillSurgeriesInternal findNextBest matchForType TimeRange.getRemainder
+
+module PreProcessing =
+    let private prepEmployeeInternal getRemainder (employee: Employee) : EmployeeWorkSlot list = 
+       employee.WorkHours
+       |> List.map(fun wh -> 
+           let timeOffsForDay = employee.TimeOff |> List.filter (fun tmOff -> wh.From.Date = tmOff.From.Date)
+           (wh, timeOffsForDay)
+       )
+       |> List.map (fun (workTime, timeOffs) -> getRemainder workTime timeOffs)
+       |> List.concat
+       |> List.map (fun tr -> { Name = employee.Name; Position = employee.Position; TimeSlot = tr })
+
+    let private prepEmployee = prepEmployeeInternal TimeRange.getRemainder 
+
+    let private prepEmployeesInternal prepEmployee (employees : Employee list) : EmployeeWorkSlot list = 
+        employees
+        |> List.map(fun employee -> prepEmployee employee)
+        |> List.concat
+
+    let prepEmployees = prepEmployeesInternal prepEmployee
+
+    let prepSurgeries (surgeries : Surgery list) : SurgeryWorkSlot list = 
+        surgeries 
+        |> List.collect (fun s -> s.WorkHours |> List.map (fun w -> { Name = s.Name; TimeSlot = w }))
 

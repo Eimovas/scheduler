@@ -1,14 +1,21 @@
 ﻿using System;
 using Microsoft.AspNetCore.Mvc;
-using Scheduler.Console.API;
+using Scheduler.Core.API;
 using Scheduler.Core.Domain.DTO;
 
 namespace Scheduler.API.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    public class DistributionController : ControllerBase
+    public class AssignmentController : ControllerBase
     {
+        private readonly IScheduleCalculator _scheduleCalculator;
+
+        public AssignmentController(IScheduleCalculator scheduleCalculator)
+        {
+            _scheduleCalculator = scheduleCalculator ?? throw new ArgumentNullException(nameof(scheduleCalculator));
+        }
+
         [HttpGet]
         public IActionResult Ping()
         {
@@ -18,15 +25,7 @@ namespace Scheduler.API.Controllers
         [HttpPost]
         public IActionResult Calculate([FromBody] SetupDTO setup)
         {
-            return Ok(ScheduleProvider.CalculateDistribution(setup));
-        }
-    }
-
-    public sealed class MyClass
-    {
-        public static void Some()
-        {
-            this.Equals("");
+            return Ok(_scheduleCalculator.Calculate(setup));
         }
     }
 }
