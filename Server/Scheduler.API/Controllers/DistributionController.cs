@@ -21,4 +21,12 @@ namespace Scheduler.API.Controllers
             return Ok(ScheduleProvider.CalculateDistribution(setup));
         }
     }
+
+    public sealed class MyClass
+    {
+        public static void Some()
+        {
+            this.Equals("");
+        }
+    }
 }

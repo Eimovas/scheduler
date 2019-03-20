@@ -281,49 +281,73 @@ module Mappings3 =
     
     let staffAssignmentToDTO = staffAssignmentToDTOInternal surgeryWorkSlotToDTO employeeWorkSlotToDTO
 
+    let employeeToDomain (employee : EmployeeDTO) : Employee = 
+        { 
+            Name = employee.Name
+            Position = 
+                match employee.Position with
+                | "Nurse" -> Nurse
+                | "Dentist" -> Dentist
+                | position -> failwith (sprintf "Given employee position '%s' is unsuported" position)
+            TimeOff = employee.TimeOff |> Array.toList
+            WorkHours = employee.WorkHours |> Array.toList
+        }
+
+    let surgeryToDomain (surgery : SurgeryDTO) : Surgery = 
+        { Name = surgery.Name; WorkHours = surgery.WorkHours |> Array.toList }
+
+    let private setupToDomainInternal employeeToDomain surgeryToDomain (setup : SetupDTO) : Setup = 
+        {
+            Employees = setup.Employees |> Array.map (fun e -> employeeToDomain e) |> Array.toList
+            Surgeries = setup.Surgeries |> Array.map (fun s -> surgeryToDomain s) |> Array.toList
+        }
+
+    let setupToDomain = setupToDomainInternal employeeToDomain surgeryToDomain
     // TODO: finished here. Do the setup DTO mappings and validation, commit everything and refactor everything.
 
     
 module Test = 
-    let surgeries : Surgery list = [
-        { Name = "Surgery 1"; WorkHours = [
-            { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
-            { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
-        ]} 
-        { Name = "Surgery 2"; WorkHours = [
-            { From = DateTime(2018, 1, 3, 8, 0, 0); To = DateTime(2018, 1, 3, 17, 0, 0) }
-            { From = DateTime(2018, 1, 4, 8, 0, 0); To = DateTime(2018, 1, 4, 17, 0, 0) }
-        ]}
-    ]
-
-    let employees : Employee list = [
-        {   Name = "Algis"
-            Position = Nurse
-            WorkHours = [
+    let setupDTO : SetupDTO = {
+        Employees = [|
+            {   Name = "Algis"
+                Position = "Nurse"
+                WorkHours = [|
+                    { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
+                    { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+                    { From = DateTime(2018, 1, 3, 8, 0, 0); To = DateTime(2018, 1, 3, 17, 0, 0)}
+                |]
+                TimeOff = [|
+                    { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+                |]   
+            }
+            {   Name = "Jonas"
+                Position = "Dentist"
+                WorkHours = [|
+                    { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
+                    { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+                    { From = DateTime(2018, 1, 4, 8, 0, 0); To = DateTime(2018, 1, 4, 17, 0, 0) }
+                |]
+                TimeOff = [|
+                    { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+                |]   
+            }
+        |]
+        Surgeries = [|
+            { Name = "Surgery 1"; WorkHours = [|
                 { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
                 { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
-                { From = DateTime(2018, 1, 3, 8, 0, 0); To = DateTime(2018, 1, 3, 17, 0, 0)}
-            ]
-            TimeOff = [
-                { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
-            ]   
-        }
-        {   Name = "Jonas"
-            Position = Dentist
-            WorkHours = [
-                { From = DateTime(2018, 1, 1, 8, 0, 0); To = DateTime(2018, 1, 1, 17, 0, 0) }
-                { From = DateTime(2018, 1, 2, 8, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
+            |]} 
+            { Name = "Surgery 2"; WorkHours = [|
+                { From = DateTime(2018, 1, 3, 8, 0, 0); To = DateTime(2018, 1, 3, 17, 0, 0) }
                 { From = DateTime(2018, 1, 4, 8, 0, 0); To = DateTime(2018, 1, 4, 17, 0, 0) }
-            ]
-            TimeOff = [
-                { From = DateTime(2018, 1, 2, 12, 0, 0); To = DateTime(2018, 1, 2, 17, 0, 0) }
-            ]   
-        }
-    ]
+            |]}
+        |]
+    }
 
-    let prepedSurgeries = Setup3.prepSurgeries surgeries
-    let prepedNurses = Setup3.prepEmployees (employees |> List.filter (fun e -> e.Position = Nurse))
-    let preppedDoctors = Setup3.prepEmployees (employees |> List.filter (fun e -> e.Position = Dentist))
+    let setup = Mappings3.setupToDomain setupDTO
+    let prepedSurgeries = Setup3.prepSurgeries setup.Surgeries
+    let prepedNurses = Setup3.prepEmployees (setup.Employees |> List.filter (fun e -> e.Position = Nurse))
+    let preppedDoctors = Setup3.prepEmployees (setup.Employees |> List.filter (fun e -> e.Position = Dentist))
     let result = Implementation3.fillSurgeries prepedSurgeries preppedDoctors prepedNurses
     let resultDTO = result |> List.map (fun r -> Mappings3.staffAssignmentToDTO r)
 
