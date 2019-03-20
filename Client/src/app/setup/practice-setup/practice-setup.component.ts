@@ -71,8 +71,6 @@ export class PracticeSetupComponent implements OnInit, OnDestroy {
         }
     }
 
-
-
     private buildNextMonth(): moment.Moment[] {
         const nextMonth = moment().add(1, 'month');
         let daysInMonth = nextMonth.daysInMonth();

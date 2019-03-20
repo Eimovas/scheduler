@@ -11,7 +11,7 @@ import { SetupStateService } from './setup-state.service';
 export class SetupComponent implements OnInit, OnDestroy, AfterViewInit {
 
     ngAfterViewInit(): void {
-        this.setupFormService.enable();
+        // this.setupFormService.enable();
         
     }
 
@@ -23,9 +23,5 @@ export class SetupComponent implements OnInit, OnDestroy, AfterViewInit {
 
     ngOnDestroy() {
         // this.formSubscription.unsubscribe();
-    }
-
-    public save(): void {
-        console.log(this.setupFormService.setupForm.value);
     }
 }

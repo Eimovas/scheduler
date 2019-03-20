@@ -11,7 +11,7 @@ const routes: Routes = [
     path: "setup",
     component: SetupComponent,
     children: [
-        { path: "", redirectTo: "practiceSetup", pathMatch: "full"},
+        { path: "", redirectTo: "surgerySetup", pathMatch: "full"},
         { path: "practiceSetup", component: PracticeSetupComponent},
         { path: "surgerySetup", component: SurgerySetupComponent},
         { path: "employeeSetup", component: EmployeeSetupComponent},

@@ -1,31 +1,18 @@
 export interface SurgeryDTO {
     name: string;
-    workTimes: TimeRange[];
+    workHours: TimeRange[];
 }
 
 export interface EmployeeDTO {
     name: string;
-    specialization: number;
-    workTimes: TimeRange[];
-    hourLimitPerWeek: number;
-    requestedOvertime: TimeRange[];
-}
-
-export interface SurgeryScheduleDTO {
-    surgery: SurgeryDTO;
-    timeSlot: TimeRange;
-    employees: PairedTime<EmployeeDTO>[];
-}
-
-export interface DistributionDTO {
-    schedules: SurgeryScheduleDTO[];
-    timeRange: TimeRange;
+    position: string;
+    workHours: TimeRange[];
+    timeOff: TimeRange[];
 }
 
 export interface SetupDTO {
-    operationTimes: TimeRange[];
-    employeeSetup: EmployeeDTO[];
-    surgerySetup: SurgeryDTO[];
+    employees: EmployeeDTO[];
+    surgeries: SurgeryDTO[];
 }
 
 export interface TimeRange {
@@ -33,42 +20,32 @@ export interface TimeRange {
     from: Date;
 }
 
-export interface PairedTime<T> {
-    pair: T;
-    timeRange: TimeRange;
-}
-
 export const sampleSetup: SetupDTO = {
-    surgerySetup: [
+    surgeries: [
         {
             name: "Surgery 1",
-            workTimes: [
+            workHours: [
                 { from: new Date(2018, 1, 1, 8, 0, 0), to: new Date(2018, 1, 1, 12, 0, 0) },
                 { from: new Date(2018, 1, 1, 13, 0, 0), to: new Date(2018, 1, 1, 17, 0, 0) }
             ]
         }
     ],
-    employeeSetup: [
+    employees: [
         {
             name: "Algis",
-            hourLimitPerWeek: 0.0,
-            requestedOvertime: [],
-            specialization: 1,
-            workTimes: [
+            timeOff: [],
+            position: "Nurse",
+            workHours: [
                 { from: new Date(2018, 1, 1, 8, 0, 0), to: new Date(2018, 1, 1, 17, 0, 0) }
             ]
         },
         {
             name: "Jonas",
-            hourLimitPerWeek: 0.0,
-            requestedOvertime: [],
-            specialization: 2,
-            workTimes: [
+            timeOff: [],
+            position: "Dentist",
+            workHours: [
                 { from: new Date(2018, 1, 1, 8, 0, 0), to: new Date(2018, 1, 1, 17, 0, 0) }
             ]
         }
-    ],
-    operationTimes: [
-        { from: new Date(2018, 1, 1, 8, 0, 0), to: new Date(2018, 1, 2, 17, 0, 0) }
     ]
 }

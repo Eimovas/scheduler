@@ -19,7 +19,5 @@ export class SetupStateService {
     public onChange(setup: SetupDTO): void {
         const copy = deepCopy(setup);
         this.setupFormSubject.next(copy);
-        console.log(copy);
-        
     }
 }

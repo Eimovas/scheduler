@@ -14,11 +14,9 @@ export class SetupFormService {
     constructor(fb: FormBuilder) { 
         this._setupForm = fb.group({
             operationTimes: fb.array([]),
-            surgerySetup: fb.array([]),
+            surgeries: fb.array([]),
             employeeSetup: fb.array([])
         });
-
-        this.disable();
     }
 
     public enable(): void {
